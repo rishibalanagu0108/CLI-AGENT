@@ -1,6 +1,6 @@
 # CLI Agent
 
-A CLI agent built from scratch on the **Think → Act → Observe** loop — no LangChain, no LlamaIndex, just the Azure OpenAI API and a clean Python loop.
+A CLI agent built from scratch on the **Think → Act → Observe** loop — no LangChain, no LlamaIndex, just the Gemini API and a clean Python loop.
 
 ---
 
@@ -11,7 +11,7 @@ User Query
     │
     ▼
 ┌─────────────┐
-│    THINK    │  ← call Azure OpenAI with message history + tool schemas
+│    THINK    │  ← call Gemini with message history + tool schemas
 └──────┬──────┘
        │
        ▼
@@ -45,7 +45,11 @@ source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-**2. Configure Azure OpenAI credentials**
+**2. Get a Gemini API key**
+
+Go to [Google AI Studio](https://aistudio.google.com/app/apikey) and create a free API key.
+
+**3. Configure credentials**
 
 ```bash
 cp .env.example .env
@@ -54,10 +58,8 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-AZURE_OPENAI_API_KEY=your_api_key_here
-AZURE_OPENAI_ENDPOINT=https://<resource>.openai.azure.com/
-AZURE_OPENAI_DEPLOYMENT=gpt-4o
-AZURE_OPENAI_API_VERSION=2024-08-01-preview
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-2.0-flash
 ```
 
 ---
@@ -111,7 +113,7 @@ Every agent lifecycle event is logged to the console (colored) and to `agent.log
 | `agent_start` | INFO | User query |
 | `agent_end` | INFO | Iterations, total tokens, wall-clock duration |
 | `iteration_start` | DEBUG | Iteration number, message count |
-| `llm_call_start` | INFO | Deployment, message count, iteration |
+| `llm_call_start` | INFO | Model, message count, iteration |
 | `llm_call_end` | INFO | finish_reason, input/output tokens, latency |
 | `tool_call` | INFO | Tool name, inputs, result (truncated), latency |
 | `tool_error` | ERROR | Tool name, inputs, exception message |
@@ -127,10 +129,10 @@ Every agent lifecycle event is logged to the console (colored) and to `agent.log
 cli-agent/
 ├── main.py              # CLI entry point (single-query + REPL)
 ├── agent.py             # Think → Act → Observe loop
-├── llm_interface.py     # AzureOpenAI chat completions wrapper
-├── state.py             # OpenAI-format conversation history
+├── llm_interface.py     # Gemini chat completions wrapper
+├── state.py             # Conversation history (OpenAI-compatible format)
 ├── logger.py            # Structured event logger
-├── config.py            # Azure env vars and constants
+├── config.py            # Gemini env vars and constants
 ├── requirements.txt
 ├── .env.example
 └── tools/
@@ -148,12 +150,18 @@ All settings live in `config.py` and are read from `.env`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AZURE_OPENAI_API_KEY` | — | Azure OpenAI API key |
-| `AZURE_OPENAI_ENDPOINT` | — | Azure resource endpoint URL |
-| `AZURE_OPENAI_DEPLOYMENT` | `gpt-4o` | Model deployment name |
-| `AZURE_OPENAI_API_VERSION` | `2024-08-01-preview` | API version |
+| `GEMINI_API_KEY` | — | Google AI Studio API key |
+| `GEMINI_MODEL` | `gemini-2.0-flash` | Gemini model name |
 | `MAX_TOKENS` | `4096` | Max tokens per LLM response |
 | `MAX_ITERATIONS` | `10` | Max Think→Act→Observe cycles per query |
+
+**Available models**
+
+| Model | Best for |
+|-------|----------|
+| `gemini-2.0-flash` | Fast responses, everyday tasks (default) |
+| `gemini-1.5-pro` | Complex reasoning, longer context |
+| `gemini-1.5-flash` | Lighter and faster alternative |
 
 ---
 

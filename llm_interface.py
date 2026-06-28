@@ -1,43 +1,70 @@
+import re
 import time
-from openai import AzureOpenAI, OpenAI
-from config import (
-    AZURE_OPENAI_API_KEY,
-    AZURE_OPENAI_ENDPOINT,
-    AZURE_OPENAI_DEPLOYMENT,
-    AZURE_OPENAI_API_VERSION,
-    MAX_TOKENS,
-)
+from openai import OpenAI, AuthenticationError, NotFoundError, BadRequestError, RateLimitError
+from config import GEMINI_API_KEY, GEMINI_MODEL, MAX_TOKENS
 from logger import logger
 
+_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+_MAX_RETRIES     = 3
 
-def _make_client(endpoint: str, api_key: str, api_version: str):
-    # New Azure AI Foundry endpoints already contain /v1 in the path.
-    # The AzureOpenAI client appends ?api-version=... which those endpoints reject.
-    # For /v1-style URLs use the standard OpenAI client with base_url instead.
-    if "/v1" in endpoint:
-        return OpenAI(api_key=api_key, base_url=endpoint.rstrip("/"))
-    return AzureOpenAI(
-        api_key=api_key,
-        azure_endpoint=endpoint,
-        api_version=api_version,
-    )
+
+def _parse_retry_delay(exc: RateLimitError) -> float:
+    """Pull the suggested retry delay (seconds) out of the error message, default 60s."""
+    match = re.search(r'retry[^\d]*(\d+(?:\.\d+)?)\s*s', str(exc), re.IGNORECASE)
+    return float(match.group(1)) if match else 60.0
 
 
 class LLMInterface:
     def __init__(self):
-        self.client     = _make_client(AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VERSION)
-        self.deployment = AZURE_OPENAI_DEPLOYMENT
+        # Gemini exposes an OpenAI-compatible endpoint, so we reuse the
+        # openai SDK — no extra dependency, same response shape.
+        self.client = OpenAI(
+            api_key=GEMINI_API_KEY,
+            base_url=_GEMINI_BASE_URL,
+        )
+        self.model = GEMINI_MODEL
 
     def call(self, messages: list[dict], tool_defs: list[dict], iteration: int):
-        logger.log_llm_call_start(self.deployment, len(messages), iteration)
+        logger.log_llm_call_start(self.model, len(messages), iteration)
 
         t0 = time.perf_counter()
-        response = self.client.chat.completions.create(
-            model=self.deployment,
-            messages=messages,
-            tools=tool_defs or None,
-            max_tokens=MAX_TOKENS,
-        )
+
+        for attempt in range(1, _MAX_RETRIES + 1):
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    tools=tool_defs or None,
+                    max_tokens=MAX_TOKENS,
+                )
+                break  # success — exit retry loop
+
+            except RateLimitError as e:
+                delay = _parse_retry_delay(e)
+                if attempt == _MAX_RETRIES:
+                    raise RuntimeError(
+                        f"Gemini rate limit hit {_MAX_RETRIES} times in a row.\n"
+                        f"Your free-tier daily quota may be exhausted.\n"
+                        f"Enable billing at: https://aistudio.google.com/app/apikey"
+                    )
+                logger.log_rate_limit(attempt, _MAX_RETRIES, delay)
+                time.sleep(delay)
+
+            except AuthenticationError:
+                raise RuntimeError(
+                    "Gemini authentication failed.\n"
+                    "Check GEMINI_API_KEY in your .env file.\n"
+                    "Get a key at: https://aistudio.google.com/app/apikey"
+                )
+            except NotFoundError:
+                raise RuntimeError(
+                    f"Gemini model '{self.model}' not found.\n"
+                    "Check GEMINI_MODEL in your .env file.\n"
+                    "Available models: gemini-2.0-flash, gemini-1.5-pro, gemini-1.5-flash"
+                )
+            except BadRequestError as e:
+                raise RuntimeError(f"Bad request to Gemini: {e}")
+
         duration_ms = (time.perf_counter() - t0) * 1000
 
         choice = response.choices[0]

@@ -5,8 +5,12 @@ from agent import Agent
 
 
 def run_once(query: str, verbose: bool):
-    agent  = Agent()
-    answer = agent.run(query)
+    agent = Agent()
+    try:
+        answer = agent.run(query)
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
     print(answer)
     if verbose:
         print(
@@ -30,8 +34,12 @@ def repl(verbose: bool):
         if not query:
             continue
 
-        agent  = Agent()
-        answer = agent.run(query)
+        agent = Agent()
+        try:
+            answer = agent.run(query)
+        except RuntimeError as e:
+            print(f"\nError: {e}\n", file=sys.stderr)
+            continue
         print(f"\nAgent: {answer}\n")
         if verbose:
             print(

@@ -107,6 +107,12 @@ class AgentLogger:
         self._emit(logging.WARNING, "max_iterations_hit",
                    limit=limit, total_tokens=total_tokens)
 
+    def log_rate_limit(self, attempt: int, max_retries: int, retry_after_s: float):
+        self._emit(logging.WARNING, "rate_limit_retry",
+                   attempt=attempt, max_retries=max_retries,
+                   retry_after_s=round(retry_after_s, 1),
+                   message=f"Rate limited — waiting {retry_after_s:.0f}s then retrying ({attempt}/{max_retries})")
+
 
 # Module-level singleton — callers do: from logger import logger
 logger = AgentLogger()
