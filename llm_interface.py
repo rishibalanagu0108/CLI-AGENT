@@ -1,5 +1,5 @@
 import time
-from openai import AzureOpenAI
+from openai import AzureOpenAI, OpenAI
 from config import (
     AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_ENDPOINT,
@@ -10,13 +10,22 @@ from config import (
 from logger import logger
 
 
+def _make_client(endpoint: str, api_key: str, api_version: str):
+    # New Azure AI Foundry endpoints already contain /v1 in the path.
+    # The AzureOpenAI client appends ?api-version=... which those endpoints reject.
+    # For /v1-style URLs use the standard OpenAI client with base_url instead.
+    if "/v1" in endpoint:
+        return OpenAI(api_key=api_key, base_url=endpoint.rstrip("/"))
+    return AzureOpenAI(
+        api_key=api_key,
+        azure_endpoint=endpoint,
+        api_version=api_version,
+    )
+
+
 class LLMInterface:
     def __init__(self):
-        self.client = AzureOpenAI(
-            api_key=AZURE_OPENAI_API_KEY,
-            azure_endpoint=AZURE_OPENAI_ENDPOINT,
-            api_version=AZURE_OPENAI_API_VERSION,
-        )
+        self.client     = _make_client(AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VERSION)
         self.deployment = AZURE_OPENAI_DEPLOYMENT
 
     def call(self, messages: list[dict], tool_defs: list[dict], iteration: int):
