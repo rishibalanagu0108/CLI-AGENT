@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL   = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_MODEL   = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 MAX_TOKENS      = 4096
 MAX_ITERATIONS  = 10

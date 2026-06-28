@@ -14,8 +14,10 @@ class ConversationState:
         self.messages.append({"role": "user", "content": content})
 
     def add_assistant_message(self, message):
-        # Store the raw OpenAI message object as a dict so tool_calls are preserved
-        self.messages.append(message.model_dump())
+        msg = {"role": "assistant", "content": message.content}
+        if message.tool_calls:
+            msg["tool_calls"] = [tc.model_dump() for tc in message.tool_calls]
+        self.messages.append(msg)
 
     def add_tool_results(self, results: list[dict]):
         # Each result: {role: "tool", tool_call_id: str, content: str}

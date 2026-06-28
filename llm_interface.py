@@ -1,28 +1,25 @@
 import re
 import time
 from openai import OpenAI, AuthenticationError, NotFoundError, BadRequestError, RateLimitError
-from config import GEMINI_API_KEY, GEMINI_MODEL, MAX_TOKENS
+from config import GROQ_API_KEY, GROQ_MODEL, MAX_TOKENS
 from logger import logger
 
-_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
-_MAX_RETRIES     = 3
+_GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+_MAX_RETRIES   = 3
 
 
 def _parse_retry_delay(exc: RateLimitError) -> float:
-    """Pull the suggested retry delay (seconds) out of the error message, default 60s."""
     match = re.search(r'retry[^\d]*(\d+(?:\.\d+)?)\s*s', str(exc), re.IGNORECASE)
     return float(match.group(1)) if match else 60.0
 
 
 class LLMInterface:
     def __init__(self):
-        # Gemini exposes an OpenAI-compatible endpoint, so we reuse the
-        # openai SDK — no extra dependency, same response shape.
         self.client = OpenAI(
-            api_key=GEMINI_API_KEY,
-            base_url=_GEMINI_BASE_URL,
+            api_key=GROQ_API_KEY,
+            base_url=_GROQ_BASE_URL,
         )
-        self.model = GEMINI_MODEL
+        self.model = GROQ_MODEL
 
     def call(self, messages: list[dict], tool_defs: list[dict], iteration: int):
         logger.log_llm_call_start(self.model, len(messages), iteration)
@@ -43,27 +40,26 @@ class LLMInterface:
                 delay = _parse_retry_delay(e)
                 if attempt == _MAX_RETRIES:
                     raise RuntimeError(
-                        f"Gemini rate limit hit {_MAX_RETRIES} times in a row.\n"
-                        f"Your free-tier daily quota may be exhausted.\n"
-                        f"Enable billing at: https://aistudio.google.com/app/apikey"
+                        f"Groq rate limit hit {_MAX_RETRIES} times in a row.\n"
+                        f"Check your usage limits at: https://console.groq.com"
                     )
                 logger.log_rate_limit(attempt, _MAX_RETRIES, delay)
                 time.sleep(delay)
 
             except AuthenticationError:
                 raise RuntimeError(
-                    "Gemini authentication failed.\n"
-                    "Check GEMINI_API_KEY in your .env file.\n"
-                    "Get a key at: https://aistudio.google.com/app/apikey"
+                    "Groq authentication failed.\n"
+                    "Check GROQ_API_KEY in your .env file.\n"
+                    "Get a key at: https://console.groq.com"
                 )
             except NotFoundError:
                 raise RuntimeError(
-                    f"Gemini model '{self.model}' not found.\n"
-                    "Check GEMINI_MODEL in your .env file.\n"
-                    "Available models: gemini-2.0-flash, gemini-1.5-pro, gemini-1.5-flash"
+                    f"Groq model '{self.model}' not found.\n"
+                    "Check GROQ_MODEL in your .env file.\n"
+                    "Available models: llama-3.3-70b-versatile, llama3-70b-8192, mixtral-8x7b-32768"
                 )
             except BadRequestError as e:
-                raise RuntimeError(f"Bad request to Gemini: {e}")
+                raise RuntimeError(f"Bad request to Groq: {e}")
 
         duration_ms = (time.perf_counter() - t0) * 1000
 

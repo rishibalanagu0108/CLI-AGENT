@@ -1,6 +1,6 @@
 # CLI Agent
 
-A CLI agent built from scratch on the **Think → Act → Observe** loop — no LangChain, no LlamaIndex, just the Gemini API and a clean Python loop.
+A CLI agent built from scratch on the **Think → Act → Observe** loop — no LangChain, no LlamaIndex, just the Groq API and a clean Python loop.
 
 ---
 
@@ -11,7 +11,7 @@ User Query
     │
     ▼
 ┌─────────────┐
-│    THINK    │  ← call Gemini with message history + tool schemas
+│    THINK    │  ← call Groq with message history + tool schemas
 └──────┬──────┘
        │
        ▼
@@ -45,9 +45,9 @@ source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-**2. Get a Gemini API key**
+**2. Get a Groq API key**
 
-Go to [Google AI Studio](https://aistudio.google.com/app/apikey) and create a free API key.
+Go to [Groq Console](https://console.groq.com) and create a free API key.
 
 **3. Configure credentials**
 
@@ -58,8 +58,8 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_MODEL=gemini-2.0-flash
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
 ---
@@ -129,10 +129,10 @@ Every agent lifecycle event is logged to the console (colored) and to `agent.log
 cli-agent/
 ├── main.py              # CLI entry point (single-query + REPL)
 ├── agent.py             # Think → Act → Observe loop
-├── llm_interface.py     # Gemini chat completions wrapper
+├── llm_interface.py     # Groq chat completions wrapper
 ├── state.py             # Conversation history (OpenAI-compatible format)
 ├── logger.py            # Structured event logger
-├── config.py            # Gemini env vars and constants
+├── config.py            # Groq env vars and constants
 ├── requirements.txt
 ├── .env.example
 └── tools/
@@ -150,8 +150,8 @@ All settings live in `config.py` and are read from `.env`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GEMINI_API_KEY` | — | Google AI Studio API key |
-| `GEMINI_MODEL` | `gemini-2.0-flash` | Gemini model name |
+| `GROQ_API_KEY` | — | Groq Console API key |
+| `GROQ_MODEL` | `llama-3.3-70b-versatile` | Groq model name |
 | `MAX_TOKENS` | `4096` | Max tokens per LLM response |
 | `MAX_ITERATIONS` | `10` | Max Think→Act→Observe cycles per query |
 
@@ -159,9 +159,9 @@ All settings live in `config.py` and are read from `.env`:
 
 | Model | Best for |
 |-------|----------|
-| `gemini-2.0-flash` | Fast responses, everyday tasks (default) |
-| `gemini-1.5-pro` | Complex reasoning, longer context |
-| `gemini-1.5-flash` | Lighter and faster alternative |
+| `llama-3.3-70b-versatile` | Powerful reasoning, everyday tasks (default) |
+| `llama3-70b-8192` | Llama 3 70B, fast and capable |
+| `mixtral-8x7b-32768` | Long context tasks |
 
 ---
 
